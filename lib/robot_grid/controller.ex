@@ -5,7 +5,7 @@ defmodule RobotGrid.Controller do
   alias RobotGrid.Robot
 
   @delta 0.01
-  @speed 1
+  @speed 10
 
   use GenServer
 
@@ -28,14 +28,14 @@ defmodule RobotGrid.Controller do
   end
 
   def handle_call({:link_to, neighbor}, _from, state) do
-    neighbor_laziness = GenServer.call neighbor, {:connect, state.robot_config.laziness}
-    coins = max(neighbor_laziness,state.robot_config.laziness) - neighbor_laziness
+    coins = GenServer.call neighbor, {:connect, state.robot_config.laziness}
     new_state = state |> add_connection(neighbor, coins)
     {:reply, :ok, new_state}
   end
   def handle_call({:connect, neighbor_laziness}, {neighbor, _tag}, state) do
-    new_state = state |> add_connection(neighbor, state.robot_config.laziness)
-    {:reply, state.robot_config.laziness, new_state}
+    coins = max(neighbor_laziness, state.robot_config.laziness)
+    new_state = state |> add_connection(neighbor, coins)
+    {:reply, 0, new_state}
   end
 
   def handle_cast({:coins, neighbor, coins}, state) do
