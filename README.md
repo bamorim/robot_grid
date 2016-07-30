@@ -1,5 +1,7 @@
 # RobotGrid
 
+![Example](http://i.giphy.com/3o6ZtjvmhlQpOP0J0s.gif)
+
 **TODO: Add description**
 
 ## Installation
