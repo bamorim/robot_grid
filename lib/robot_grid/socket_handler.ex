@@ -20,7 +20,7 @@ defmodule RobotGrid.SocketHandler do
     robot_spots = for {spot, _} <- robots, into: MapSet.new, do: spot
 
     rng = 0..(@grid_size*2 + 1)
-    spots = for x <- rng, y <- rng, not MapSet.member(robot_spots, {x,y}), do: {x,y}
+    spots = for x <- rng, y <- rng, not MapSet.member?(robot_spots, {x,y}), do: {x,y}
 
     # Setup update timer
     {:ok, timer} = :timer.apply_interval(@timer_interval, __MODULE__, :update_positions, [self, robots])
@@ -57,7 +57,7 @@ defmodule RobotGrid.SocketHandler do
   def update_positions(socket, robots) do
     robots
     |> Enum.with_index
-    |> Enum.each(fn {rbt, id} -> update_position(socket, id, rbt) end)
+    |> Enum.each(fn {{_,rbt}, id} -> update_position(socket, id, rbt) end)
   end
 
   def update_position(socket, id, rbt) do
