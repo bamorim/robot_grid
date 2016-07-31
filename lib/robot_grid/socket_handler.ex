@@ -8,8 +8,8 @@ defmodule RobotGrid.SocketHandler do
 
   @timeout 60000
   @timer_interval 16
-  @grid_size 6
-  @max_laziness 2
+  @grid_size 4
+  @max_laziness 4
 
   # WebSocket API
 
@@ -27,7 +27,6 @@ defmodule RobotGrid.SocketHandler do
     |> Map.values
     |> Enum.each(&link_processes/1)
 
-    # Setup update timer
     robots = robots_with_origin |> Enum.map(fn {_, r} -> r end)
     processes = processes_with_target |> Enum.map(fn {_, p} -> p end)
 
@@ -35,9 +34,10 @@ defmodule RobotGrid.SocketHandler do
     processes
     |> Enum.each(&Controller.run/1)
 
+    # Setup update timer
     {:ok, timer} = :timer.apply_interval(@timer_interval, __MODULE__, :update_positions, [self, robots])
 
-    {:ok, req, {robots, timer}, @timeout}
+    {:ok, req, {robots, processes, timer}, @timeout}
   end
 
   def websocket_handle({:text, txt}, req, state) do
@@ -49,11 +49,12 @@ defmodule RobotGrid.SocketHandler do
   end
   def websocket_info(_info, req, state), do: {:ok, req, state}
 
-  def websocket_terminate(_reason, _req, {robots, timer}) do
+  def websocket_terminate(_reason, _req, {robots, processes, timer}) do
     IO.puts "Terminating..."
 
-    robots |> Enum.each(&Robot.stop/1)
     :timer.cancel(timer)
+    processes |> Enum.each(&GenServer.stop/1)
+    robots |> Enum.each(&Robot.stop/1)
 
     :ok
   end
@@ -74,7 +75,7 @@ defmodule RobotGrid.SocketHandler do
 
   def start_process({{x,y}, robot}, {dx, dy}) do
     target = {x+dx, y+dy}
-    laziness = 1#:random.uniform * @max_laziness |> Float.ceil |> trunc
+    laziness = :random.uniform * @max_laziness |> Float.ceil |> trunc
     {:ok, process} = Controller.start_link(robot, {x,y}, target, laziness)
     {target, process}
   end

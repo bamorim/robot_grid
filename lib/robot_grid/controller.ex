@@ -33,9 +33,9 @@ defmodule RobotGrid.Controller do
     {:reply, :ok, new_state}
   end
   def handle_call({:connect, neighbor_laziness}, {neighbor, _tag}, state) do
-    coins = max(neighbor_laziness, state.robot_config.laziness)
-    new_state = state |> add_connection(neighbor, coins)
-    {:reply, 0, new_state}
+    {my_coins, his_coins} = distribute_coins({self, state.robot_config.laziness}, {neighbor, neighbor_laziness})
+    new_state = state |> add_connection(neighbor, my_coins)
+    {:reply, his_coins, new_state}
   end
 
   def handle_cast({:coins, neighbor, coins}, state) do
@@ -45,9 +45,23 @@ defmodule RobotGrid.Controller do
 
     {:noreply, new_state}
   end
-  def handle_cast(:run, state), do: {:noreply, run_if_ready(state)}
+  def handle_cast(:run, state) do
+    {:noreply, run_if_ready(state)}
+  end
 
   # Internals
+
+  defp distribute_coins({m_pid, m_r}, {n_pid, n_r}) do
+    total = m_r + n_r - gcd(m_r, n_r)
+    if {m_r, m_pid} > {n_r, n_pid} do
+      {m_r, total-m_r}
+    else
+      {total-n_r, n_r}
+    end
+  end
+
+  defp gcd(a,0), do: abs(a)
+  defp gcd(a,b), do: gcd(b, rem(a,b))
 
   defp run_if_ready(state) do
     if ready_to_start?(state) do
@@ -56,6 +70,7 @@ defmodule RobotGrid.Controller do
       state
       |> update_coins(&(&1 - state.robot_config.laziness))
       |> give_coins
+      |> run_if_ready
     else
       state
     end
@@ -119,8 +134,11 @@ defmodule RobotGrid.Controller do
 
   defp give_coins(state) do
     state.connections
-    |> Enum.each(fn conn -> GenServer.cast conn, {:coins, self, state.robot_config.laziness} end)
+    |> Enum.each(&(give_coins(&1, state.robot_config.laziness)))
 
     state
+  end
+  defp give_coins(conn, coins) do
+    GenServer.cast conn, {:coins, self, coins}
   end
 end
