@@ -1,7 +1,8 @@
 defmodule RobotGrid do
   use Application
 
-  def start(_type, _args) do
+  def start(_type \\ nil, _args \\ nil) do
+    IO.puts "STARTING"
     import Supervisor.Spec, warn: false
 
     children = [
