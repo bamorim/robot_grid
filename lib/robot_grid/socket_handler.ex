@@ -1,5 +1,5 @@
 defmodule RobotGrid.SocketHandler do
-  alias RobotGrid.{Robot, Controller}
+  alias RobotGrid.{Simulation, Robot}
   @behaviour :cowboy_websocket_handler
 
   def init(_, _req, _opts) do
@@ -15,24 +15,10 @@ defmodule RobotGrid.SocketHandler do
 
   def websocket_init(_type, req, _opts) do
     # Initialize Robots
-    robots_with_origin = 0..(@grid_size*@grid_size - 1)
-    |> Enum.map(&(start_robot(self, &1)))
+    configs = 0..(@grid_size*@grid_size-1) |> Enum.map(&config_robot/1)
 
-    processes_with_target = robots_with_origin
-    |> Enum.flat_map(&start_processes/1)
-
-    # Link processes by target
-    processes_with_target
-    |> Enum.group_by(fn {t, _} -> t end, fn {_, p} -> p end)
-    |> Map.values
-    |> Enum.each(&link_processes/1)
-
-    robots = robots_with_origin |> Enum.map(fn {_, r} -> r end)
-    processes = processes_with_target |> Enum.map(fn {_, p} -> p end)
-
-    # Start end processes
-    processes
-    |> Enum.each(&Controller.run/1)
+    # Start simulation
+    {robots, processes} = Simulation.start_all(configs)
 
     # Setup update timer
     {:ok, timer} = :timer.apply_interval(@timer_interval, __MODULE__, :update_positions, [self, robots])
@@ -54,45 +40,22 @@ defmodule RobotGrid.SocketHandler do
 
     :timer.cancel(timer)
     processes |> Enum.each(&GenServer.stop/1)
-    robots |> Enum.each(&Robot.stop/1)
+    robots |> Enum.each(&GenServer.stop/1)
 
     :ok
   end
 
   # Robot Control
 
-  def start_processes(robot_with_pos) do
-    processes = [{-1,0}, {0,-1}, {1,0}, {0,1}]
-    |> Enum.map(&(start_process(robot_with_pos, &1)))
-
-    # Link processes that share the same robot
-    processes
-    |> Enum.map(fn {_,p} -> p end)
-    |> link_processes
-
-    processes
-  end
-
-  def start_process({{x,y}, robot}, {dx, dy}) do
-    target = {x+dx, y+dy}
-    laziness = :random.uniform * @max_laziness |> Float.ceil |> trunc
-    {:ok, process} = Controller.start_link(robot, {x,y}, target, laziness)
-    {target, process}
-  end
-
-  def link_processes([]), do: nil
-  def link_processes([p|t]) do
-    Enum.each(t, &(Controller.link(p, &1)))
-    link_processes(t)
-  end
-
-  def start_robot(socket, id) do
+  defp config_robot(id) do
     y = div(id, @grid_size)
     x = rem(id, @grid_size) * 2 + rem(y, 2)
-    {:ok, rbt} = Robot.start_link pos: {x+1, y+1}
-
-    {{x+1,y+1},rbt}
+    origin = {x+1, y+1}
+    rates = {random_rate, random_rate, random_rate, random_rate}
+    %Simulation.RobotConfig{origin: origin, rates: rates}
   end
+
+  defp random_rate, do: :random.uniform * @max_laziness |> Float.ceil |> trunc
 
   def update_positions(socket, robots) do
     robots
