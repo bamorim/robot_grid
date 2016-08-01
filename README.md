@@ -2,25 +2,11 @@
 
 ![Example](http://i.giphy.com/3o6ZtjvmhlQpOP0J0s.gif)
 
-**TODO: Add description**
+# Installing and Running
 
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
-
-  1. Add `robot_grid` to your list of dependencies in `mix.exs`:
-
-    ```elixir
-    def deps do
-      [{:robot_grid, "~> 0.1.0"}]
-    end
-    ```
-
-  2. Ensure `robot_grid` is started before your application:
-
-    ```elixir
-    def application do
-      [applications: [:robot_grid]]
-    end
-    ```
-
+1. Install [elm](http://elm-lang.org)
+2. Install [Elixir](http://elixir-lang.org/)
+3. Run `mix deps.get` to fetch mix dependencies.
+4. Run `iex -S mix` and then `RobotGrid.start nil, nil`
+5. In another terminal, run `elm reactor`
+6. Go to `http://localhost:8000/app.elm`
