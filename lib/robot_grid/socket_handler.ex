@@ -7,8 +7,8 @@ defmodule RobotGrid.SocketHandler do
   end
 
   @timeout 60000
-  @timer_interval 16
-  @grid_size 4
+  @fps 60
+  @grid_size 5
   @max_laziness 4
 
   # WebSocket API
@@ -21,7 +21,8 @@ defmodule RobotGrid.SocketHandler do
     {robots, processes} = Simulation.start_all(configs)
 
     # Setup update timer
-    {:ok, timer} = :timer.apply_interval(@timer_interval, __MODULE__, :update_positions, [self, robots])
+    timer_interval = 1000/@fps |> Float.round |> trunc
+    {:ok, timer} = :timer.apply_interval(timer_interval, __MODULE__, :update_positions, [self, robots])
 
     {:ok, req, {robots, processes, timer}, @timeout}
   end
